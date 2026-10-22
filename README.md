@@ -13,17 +13,34 @@ Include `rstack.h` in a C source file and link the program with `librstack.so`.
 
 The main operations are:
 
-- `rstack_new()` creates an empty stack.
-- `rstack_delete(rs)` releases a reference to a stack. Do not use a pointer after its stack has been freed.
-- `rstack_push_value(rs, value)` pushes a `uint64_t` value.
-- `rstack_push_rstack(rs1, rs2)` pushes a reference to `rs2` onto `rs1`; it does not copy `rs2`.
-- `rstack_pop(rs)` removes the top item, if present.
-- `rstack_empty(rs)` checks recursively whether any value is reachable from the stack.
-- `rstack_front(rs)` returns a `result_t`; `flag` indicates whether `value` contains the nearest reachable value.
-- `rstack_read(path)` creates a stack from decimal numbers separated by whitespace in a text file.
-- `rstack_write(path, rs)` writes reachable values as decimal numbers, one per line. Writing is stopped if a cycle is detected.
+- **`rstack_t* rstack_new()`** — Creates an empty stack. Returns a pointer on success or `nullptr` with `errno = ENOMEM` on allocation failure.
 
-Operations that can fail report errors using their documented return value and `errno`. For example, push operations return `0` on success and `-1` on failure; `rstack_read()` returns `NULL` on failure.
+- **`void rstack_delete(rstack_t *rs)`** — Deletes a stack. Does nothing if `rs == nullptr`. The pointer must not be used after deletion.
+
+- **`int rstack_push_value(rstack_t *rs, uint64_t value)`** — Pushes a number onto a stack. Returns `0` on success or `-1` on failure (`EINVAL` for a null pointer, `ENOMEM` for allocation failure).
+
+- **`int rstack_push_rstack(rstack_t *rs1, rstack_t *rs2)`** — Pushes one stack (`rs2`) onto another (`rs1`). Returns `0` on success or `-1` if either pointer is null (`EINVAL`) or allocation fails (`ENOMEM`).
+
+- **`void rstack_pop(rstack_t *rs)`** — Removes the top element without recursion. Does nothing if the pointer is null or the stack is empty.
+
+- **`bool rstack_empty(rstack_t *rs)`** — Recursively checks whether a stack contains a number. Returns `true` if the pointer is null or the stack is empty; otherwise, returns `false`.
+
+- **`result_t rstack_front(rstack_t *rs)`** — Recursively finds the number closest to the stack's top. Returns `{flag = true, value = number}` if found; otherwise, `flag = false` if the pointer is null, the stack is empty, or no number is found.
+
+  ```cpp
+  typedef struct {
+      bool flag;
+      uint64_t value;
+  } result_t;
+  ```
+
+- **`rstack_t* rstack_read(char const *path)`** — Creates a stack from a file containing base-10 numbers separated by whitespace. Leading, trailing, and repeated whitespace are allowed. Validates the entire file. Returns a stack pointer on success or `nullptr` on error, setting `errno` appropriately.
+
+- **`int rstack_write(char const *path, rstack_t *rs)`** — Writes stack numbers to a file, one per line in base 10, without leading zeros or extra whitespace. Every line ends with `\n`. Returns `0` on success or `-1` on error, setting `errno` appropriately. Writing is aborted if a cycle is detected.
+
+For `rstack_read()` and `rstack_write()`, selecting appropriate `errno` values is part of the implementation requirements.
+
+Operations that can fail report errors using their documented return value and `errno`.
 
 ## Building
 
@@ -52,3 +69,7 @@ Remove generated build files with:
 ```sh
 make clean
 ```
+
+## Acknowledgements
+
+The tests used to validate this implementation as well as the header file outline were provided by the staff of University of Warsaw.
